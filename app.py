@@ -37,11 +37,80 @@ def display_answer_result(option, correct_answer, selected_option, is_correct):
         return option
 
 def main():
+    # モバイル対応のページ設定
     st.set_page_config(
         page_title="ゴルフルールクイズ",
         page_icon="⛳",
-        layout="centered"
+        layout="centered",
+        initial_sidebar_state="collapsed"
     )
+    
+    # モバイル対応のカスタムCSS
+    st.markdown("""
+    <style>
+    /* モバイル表示の最適化 */
+    @media (max-width: 768px) {
+        /* ボタンのスタイル調整 */
+        .stButton > button {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 15px;
+            font-size: 16px;
+            word-wrap: break-word;
+            white-space: normal;
+            height: auto;
+        }
+        
+        /* テキストの折り返し設定 */
+        p, h1, h2, h3, h4, h5, h6, li {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+        }
+        
+        /* フォントサイズの調整 */
+        h1 {
+            font-size: 1.8rem !important;
+        }
+        h2 {
+            font-size: 1.5rem !important;
+        }
+        h3 {
+            font-size: 1.3rem !important;
+        }
+        
+        /* 余白の調整 */
+        .block-container {
+            padding-top: 1rem !important;
+            padding-bottom: 1rem !important;
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+        
+        /* プログレスバーの調整 */
+        .stProgress > div > div {
+            height: 10px !important;
+        }
+        
+        /* メトリック表示の調整 */
+        .css-1l4y6pdm, .css-1xarl3l {
+            font-size: 1.2rem !important;
+        }
+    }
+    
+    /* 問題文のスタイル調整 */
+    .question-text {
+        font-size: 1.1rem;
+        line-height: 1.5;
+        margin-bottom: 1rem;
+    }
+    
+    /* 選択肢のボタン間隔 */
+    .option-button {
+        margin-bottom: 8px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
     
     initialize_session_state()
     
@@ -53,41 +122,39 @@ def main():
     if st.session_state.quiz_manager is None:
         st.markdown("### 🎯 難易度と問題数を選択")
         
-        col1, col2, col3 = st.columns([2, 1, 1])
-        with col1:
-            difficulty = st.selectbox(
-                "難易度を選択してください：",
-                ["やさしい", "ふつう", "むずかしい"],
-                help="各難易度に応じた問題が出題されます。"
-            )
+        # モバイル表示では縦に並べる
+        difficulty = st.selectbox(
+            "難易度を選択してください：",
+            ["やさしい", "ふつう", "むずかしい"],
+            help="各難易度に応じた問題が出題されます。"
+        )
         
         # 選択された難易度の利用可能な問題数を取得
         available_questions = len(quiz_data[difficulty])
-        with col2:
-            num_questions = st.number_input(
-                "問題数：",
-                min_value=1,
-                max_value=available_questions,
-                value=5,
-                help=f"1-{available_questions}問の範囲で選択できます"
-            )
-        
-        with col3:
-            if st.button("クイズを始める", type="primary", use_container_width=True):
-                st.session_state.quiz_manager = QuizManager(difficulty, num_questions=int(num_questions))
-                st.session_state.current_difficulty = difficulty
-                st.rerun()
+        num_questions = st.number_input(
+            "問題数：",
+            min_value=1,
+            max_value=available_questions,
+            value=min(5, available_questions),
+            help=f"1-{available_questions}問の範囲で選択できます"
+        )
         
         # 問題数の表示を追加
         st.markdown(f"**選択された難易度の利用可能な問題数**: {available_questions}問")
         
-        # 難易度の説明
-        st.markdown("#### 難易度について")
-        st.markdown("""
-        - **やさしい**: ゴルフの基本的なルールに関する問題
-        - **ふつう**: より詳細なルールや一般的な状況の問題
-        - **むずかしい**: 特殊な状況や複雑なルールに関する問題
-        """)
+        # スタートボタン - 横幅いっぱいに
+        if st.button("クイズを始める", type="primary", use_container_width=True):
+            st.session_state.quiz_manager = QuizManager(difficulty, num_questions=int(num_questions))
+            st.session_state.current_difficulty = difficulty
+            st.rerun()
+        
+        # 難易度の説明 - 折り畳み可能に
+        with st.expander("難易度について"):
+            st.markdown("""
+            - **やさしい**: ゴルフの基本的なルールに関する問題
+            - **ふつう**: より詳細なルールや一般的な状況の問題
+            - **むずかしい**: 特殊な状況や複雑なルールに関する問題
+            """)
         
     # クイズ画面
     if st.session_state.quiz_manager is not None:
@@ -96,21 +163,22 @@ def main():
         
         # 問題が残っている場合
         if current_question is not None:
-            # プログレスバーと状況表示
+            # プログレスバーと状況表示 - コンパクトに
             progress = quiz_manager.get_progress()
             st.progress(progress[0] / progress[1])
-            st.markdown(f"**難易度**: {st.session_state.current_difficulty}")
-            st.markdown(f"**進捗**: 問題 {progress[0]}/{progress[1]}")
+            st.markdown(f"**難易度**: {st.session_state.current_difficulty} | **進捗**: 問題 {progress[0]}/{progress[1]}")
             
-            # 問題文の表示
+            # 問題文の表示 - クラスを追加
             st.markdown("---")
-            st.markdown(f"### Q. {current_question.question}")
+            st.markdown(f"""<div class="question-text">
+                        <strong>Q.</strong> {current_question.question}
+                        </div>""", unsafe_allow_html=True)
             
-            # 選択肢の表示
+            # 選択肢の表示 - 縦に配置
             if not st.session_state.show_explanation:
-                cols = st.columns(1)  # 1列でボタンを配置
                 for option in current_question.options:
-                    if st.button(option, key=option, use_container_width=True):
+                    if st.button(option, key=option, use_container_width=True, 
+                               help="このオプションを選択"):
                         is_correct = quiz_manager.check_answer(option)
                         if is_correct:
                             st.success("🎉 正解です！")
@@ -119,10 +187,12 @@ def main():
                         st.session_state.show_explanation = True
                         st.rerun()
             
-            # 解説の表示
+            # 解説の表示 - モバイルフレンドリーに
             if st.session_state.show_explanation:
                 result = quiz_manager.get_last_result()
                 st.markdown("#### 選択肢:")
+                
+                # 選択肢表示をシンプルに
                 for option in current_question.options:
                     display_text = display_answer_result(
                         option, 
@@ -132,8 +202,10 @@ def main():
                     )
                     st.markdown(f"- {display_text}")
                 
-                st.markdown("#### 解説")
-                st.info(current_question.explanation)
+                # 解説をカード内に表示
+                with st.container():
+                    st.markdown("#### 解説")
+                    st.info(current_question.explanation)
                 
                 # 最終問題の場合は「結果を確認」、それ以外は「次の問題へ」を表示
                 if quiz_manager.get_progress()[0] == quiz_manager.get_progress()[1]:
@@ -147,15 +219,16 @@ def main():
                         st.session_state.show_explanation = False
                         st.rerun()
         
-        # クイズ終了時の表示
+        # クイズ終了時の表示 - モバイル最適化
         else:
             st.markdown("---")
             st.markdown("### 🎊 クイズ完了！")
             
-            # スコアの表示
+            # スコアの表示 - モバイルでも見やすく
             score = quiz_manager.get_score()
             accuracy = (score[0] / score[1]) * 100
             
+            # モバイルでも2カラムを維持
             col1, col2 = st.columns(2)
             with col1:
                 st.metric("正解数", f"{score[0]}/{score[1]}")
@@ -165,7 +238,7 @@ def main():
             # 評価の表示
             display_score_evaluation(accuracy)
             
-            # リスタートボタン
+            # リスタートボタン - 大きく目立つように
             st.markdown("---")
             if st.button("ホーム画面に戻る", type="primary", use_container_width=True):
                 st.session_state.quiz_manager = None
